@@ -20,11 +20,17 @@ const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
   "http://localhost:4173",
+  // Vercel deployments — allow all *.vercel.app subdomains
+  /\.vercel\.app$/,
 ];
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (!origin) return callback(null, true);
+    const allowed = allowedOrigins.some(o =>
+      typeof o === "string" ? o === origin : o.test(origin)
+    );
+    if (allowed) {
       callback(null, true);
     } else {
       callback(new Error("Not allowed by CORS"));
@@ -64,10 +70,17 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: "Internal server error." });
 });
 
-// ─── Start Server ────────────────────────────────────────────────────────────
-app.listen(PORT, () => {
-  console.log(`\n🌵 Rann Mitra AI — Server running on http://localhost:${PORT}`);
-  console.log(`   AI Provider: ${process.env.AI_PROVIDER || "groq"}`);
-  console.log(`   Model: ${process.env.GROQ_MODEL || "llama3-8b-8192"}`);
-  console.log(`   Data Mode: Demo\n`);
-});
+// ─── Start Server (local dev only) ──────────────────────────────────────────
+// When running on Vercel, the app is exported as a serverless function.
+// `VERCEL` env variable is automatically set by Vercel's runtime.
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`\n🌵 Rann Mitra AI — Server running on http://localhost:${PORT}`);
+    console.log(`   AI Provider: ${process.env.AI_PROVIDER || "groq"}`);
+    console.log(`   Model: ${process.env.GROQ_MODEL || "llama3-8b-8192"}`);
+    console.log(`   Data Mode: Demo\n`);
+  });
+}
+
+// ─── Export for Vercel Serverless ────────────────────────────────────────────
+module.exports = app;
